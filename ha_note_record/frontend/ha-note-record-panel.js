@@ -17,7 +17,7 @@ const sharedStylesLit = `
     height: 56px;
     padding: 0 16px;
     background: var(--primary-color);
-    color: var(--text-primary-color, white);
+    color: var(--app-header-text-color, #fff);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -29,7 +29,7 @@ const sharedStylesLit = `
     height: 40px;
     border: none;
     background: transparent;
-    color: var(--text-primary-color, white);
+    color: var(--app-header-text-color, #fff);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -55,7 +55,7 @@ const sharedStylesLit = `
     height: 40px;
     border: none;
     background: transparent;
-    color: var(--text-primary-color, white);
+    color: var(--app-header-text-color, #fff);
     cursor: pointer;
     display: flex;
     align-items: center;
