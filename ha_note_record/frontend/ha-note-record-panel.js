@@ -10,14 +10,15 @@ import DOMPurify from "https://esm.sh/dompurify@3.0.6";
 
 // Inlined shared styles for HA panel compatibility
 const sharedStylesLit = `
-  /* TOP BAR */
+  /* TOP BAR - follows HA dark/light mode */
   .top-bar {
     display: flex;
     align-items: center;
     height: 56px;
     padding: 0 16px;
-    background: var(--primary-color);
-    color: var(--app-header-text-color, #fff);
+    background: var(--app-header-background-color, var(--primary-background-color));
+    color: var(--app-header-text-color, var(--primary-text-color));
+    border-bottom: 1px solid var(--divider-color);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -29,7 +30,7 @@ const sharedStylesLit = `
     height: 40px;
     border: none;
     background: transparent;
-    color: var(--app-header-text-color, #fff);
+    color: var(--app-header-text-color, var(--primary-text-color));
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -38,7 +39,7 @@ const sharedStylesLit = `
     transition: background 0.2s;
     flex-shrink: 0;
   }
-  .top-bar-sidebar-btn:hover { background: rgba(255, 255, 255, 0.1); }
+  .top-bar-sidebar-btn:hover { background: var(--secondary-background-color); }
   .top-bar-sidebar-btn svg { width: 24px; height: 24px; }
   .top-bar-title {
     flex: 1;
@@ -55,7 +56,7 @@ const sharedStylesLit = `
     height: 40px;
     border: none;
     background: transparent;
-    color: var(--app-header-text-color, #fff);
+    color: var(--app-header-text-color, var(--primary-text-color));
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -63,7 +64,7 @@ const sharedStylesLit = `
     border-radius: 50%;
     transition: background 0.2s;
   }
-  .top-bar-action-btn:hover { background: rgba(255, 255, 255, 0.1); }
+  .top-bar-action-btn:hover { background: var(--secondary-background-color); }
   .top-bar-action-btn svg { width: 24px; height: 24px; }
 
   /* SEARCH ROW */
