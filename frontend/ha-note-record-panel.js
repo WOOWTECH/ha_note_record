@@ -10,14 +10,15 @@ import DOMPurify from "https://esm.sh/dompurify@3.0.6";
 
 // Inlined shared styles for HA panel compatibility
 const sharedStylesLit = `
-  /* TOP BAR */
+  /* TOP BAR - follows HA dark/light mode */
   .top-bar {
     display: flex;
     align-items: center;
     height: 56px;
     padding: 0 16px;
-    background: var(--primary-color);
-    color: white;
+    background: var(--app-header-background-color, var(--primary-background-color));
+    color: var(--app-header-text-color, var(--primary-text-color));
+    border-bottom: 1px solid var(--divider-color);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -29,7 +30,7 @@ const sharedStylesLit = `
     height: 40px;
     border: none;
     background: transparent;
-    color: white;
+    color: var(--app-header-text-color, var(--primary-text-color));
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -38,7 +39,7 @@ const sharedStylesLit = `
     transition: background 0.2s;
     flex-shrink: 0;
   }
-  .top-bar-sidebar-btn:hover { background: rgba(255, 255, 255, 0.1); }
+  .top-bar-sidebar-btn:hover { background: var(--secondary-background-color); }
   .top-bar-sidebar-btn svg { width: 24px; height: 24px; }
   .top-bar-title {
     flex: 1;
@@ -55,7 +56,7 @@ const sharedStylesLit = `
     height: 40px;
     border: none;
     background: transparent;
-    color: white;
+    color: var(--app-header-text-color, var(--primary-text-color));
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -63,7 +64,7 @@ const sharedStylesLit = `
     border-radius: 50%;
     transition: background 0.2s;
   }
-  .top-bar-action-btn:hover { background: rgba(255, 255, 255, 0.1); }
+  .top-bar-action-btn:hover { background: var(--secondary-background-color); }
   .top-bar-action-btn svg { width: 24px; height: 24px; }
 
   /* SEARCH ROW */
@@ -870,10 +871,10 @@ class HaNoteRecordPanel extends LitElement {
         <h1 class="top-bar-title">${this._localize("title")}</h1>
         <div class="top-bar-actions">
           <button class="top-bar-action-btn" @click=${() => this._openNoteDialog("create")} title="${this._localize("add_note")}">
-            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14 10H19V12H14V10M14 6H19V8H14V6M9 12H11V14H13V16H11V18H9V16H7V14H9V12M5 2H19C20.11 2 21 2.9 21 4V20C21 21.11 20.11 22 19 22H5C3.9 22 3 21.11 3 20V4C3 2.9 3.9 2 5 2M5 4V20H19V4H5Z"/></svg>
           </button>
           <button class="top-bar-action-btn" @click=${() => this._openCategoryDialog("create")} title="${this._localize("add_category")}">
-            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 12H14V10H16V12H18V14H16V16H14V14H12V12M22 8V18C22 19.11 21.11 20 20 20H4C2.9 20 2 19.11 2 18V6C2 4.89 2.9 4 4 4H10L12 6H20C21.11 6 22 6.9 22 8M20 8H4V18H20V8Z"/></svg>
           </button>
         </div>
       </div>
