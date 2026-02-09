@@ -327,7 +327,4 @@ class HaNoteRecordOptionsFlow(OptionsFlow):
                 }
             ),
             errors=errors,
-            description_placeholders={
-                "warning": "Category must be empty. Delete all notes first."
-            },
         )

@@ -24,7 +24,7 @@ PANEL_VERSION = "1.4.0"
 def _get_panel_title(hass: HomeAssistant) -> str:
     """Get panel title based on HA language setting."""
     language = hass.config.language or "en"
-    if language.startswith("zh"):
+    if language in ("zh-Hant", "zh-TW"):
         return PANEL_TITLE_ZH
     return PANEL_TITLE
 
