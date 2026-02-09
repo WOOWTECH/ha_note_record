@@ -100,6 +100,8 @@ class HaNoteRecordStore:
         )
         self._data = StoreData()
         self._listeners: list[Callable[[], None]] = []
+        self._notes_by_id: dict[str, Note] = {}
+        self._categories_by_id: dict[str, Category] = {}
 
     @property
     def categories(self) -> list[Category]:
@@ -111,19 +113,18 @@ class HaNoteRecordStore:
         """Return all notes."""
         return self._data.notes
 
+    def _rebuild_indexes(self) -> None:
+        """Rebuild dictionary indexes from lists."""
+        self._notes_by_id = {note.id: note for note in self._data.notes}
+        self._categories_by_id = {cat.id: cat for cat in self._data.categories}
+
     def get_category(self, category_id: str) -> Category | None:
         """Get a category by ID."""
-        for category in self._data.categories:
-            if category.id == category_id:
-                return category
-        return None
+        return self._categories_by_id.get(category_id)
 
     def get_note(self, note_id: str) -> Note | None:
         """Get a note by ID."""
-        for note in self._data.notes:
-            if note.id == note_id:
-                return note
-        return None
+        return self._notes_by_id.get(note_id)
 
     def get_notes_by_category(self, category_id: str) -> list[Note]:
         """Get all notes in a category."""
@@ -137,6 +138,7 @@ class HaNoteRecordStore:
                 categories=[Category.from_dict(c) for c in data.get("categories", [])],
                 notes=[Note.from_dict(n) for n in data.get("notes", [])],
             )
+        self._rebuild_indexes()
         _LOGGER.debug(
             "Loaded %d categories and %d notes",
             len(self._data.categories),
@@ -168,6 +170,7 @@ class HaNoteRecordStore:
             created_at=self._get_timestamp(),
         )
         self._data.categories.append(category)
+        self._categories_by_id[category.id] = category
         await self.async_save()
         _LOGGER.debug("Created category: %s", category.name)
         return category
@@ -184,6 +187,7 @@ class HaNoteRecordStore:
         self._data.categories = [
             c for c in self._data.categories if c.id != category_id
         ]
+        self._categories_by_id.pop(category_id, None)
         await self.async_save()
         _LOGGER.debug("Deleted category: %s", category_id)
         return True
@@ -197,7 +201,7 @@ class HaNoteRecordStore:
     ) -> Note | None:
         """Create a new note."""
         if not self.get_category(category_id):
-            _LOGGER.error("Category not found: %s", category_id)
+            _LOGGER.warning("Category not found: %s", category_id)
             return None
 
         timestamp = self._get_timestamp()
@@ -211,44 +215,54 @@ class HaNoteRecordStore:
             updated_at=timestamp,
         )
         self._data.notes.append(note)
+        self._notes_by_id[note.id] = note
         await self.async_save()
         _LOGGER.debug("Created note: %s in category %s", note.title, category_id)
         return note
 
-    async def async_update_note_content(self, note_id: str, content: str) -> bool:
-        """Update note content."""
+    async def async_update_note(
+        self,
+        note_id: str,
+        *,
+        title: str | None = None,
+        content: str | None = None,
+        pinned: bool | None = None,
+    ) -> bool:
+        """Update note fields atomically. Only provided fields are updated."""
         note = self.get_note(note_id)
         if not note:
-            _LOGGER.error("Note not found: %s", note_id)
+            _LOGGER.warning("Note not found for update: %s", note_id)
             return False
 
-        note.content = content
+        if title is not None:
+            note.title = title
+        if content is not None:
+            note.content = content
+        if pinned is not None:
+            note.pinned = pinned
+
         note.updated_at = self._get_timestamp()
         await self.async_save()
-        _LOGGER.debug("Updated note content: %s", note_id)
+        _LOGGER.debug("Updated note: %s", note_id)
         return True
+
+    async def async_update_note_content(self, note_id: str, content: str) -> bool:
+        """Update note content."""
+        return await self.async_update_note(note_id, content=content)
 
     async def async_update_note_pinned(self, note_id: str, pinned: bool) -> bool:
         """Update note pinned status."""
-        note = self.get_note(note_id)
-        if not note:
-            _LOGGER.error("Note not found: %s", note_id)
-            return False
-
-        note.pinned = pinned
-        note.updated_at = self._get_timestamp()
-        await self.async_save()
-        _LOGGER.debug("Updated note pinned: %s = %s", note_id, pinned)
-        return True
+        return await self.async_update_note(note_id, pinned=pinned)
 
     async def async_delete_note(self, note_id: str) -> bool:
         """Delete a note."""
         note = self.get_note(note_id)
         if not note:
-            _LOGGER.error("Note not found: %s", note_id)
+            _LOGGER.warning("Note not found: %s", note_id)
             return False
 
         self._data.notes = [n for n in self._data.notes if n.id != note_id]
+        self._notes_by_id.pop(note_id, None)
         await self.async_save()
         _LOGGER.debug("Deleted note: %s", note_id)
         return True
