@@ -1,12 +1,69 @@
+// Local vendor bundles (lit-element 2.4.0, marked 9.1.6, dompurify 3.0.6)
+// These are self-contained ESM builds so the panel works without external network access.
 import {
   LitElement,
   html,
   css,
   unsafeCSS,
-} from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
+} from "./vendor/lit-element.esm.js";
 
-import { marked } from "https://esm.sh/marked@9.1.6";
-import DOMPurify from "https://esm.sh/dompurify@3.0.6";
+import { marked } from "./vendor/marked.esm.js";
+import DOMPurify from "./vendor/dompurify.esm.js";
+
+// Translations are loaded from a local JSON file at init time.
+// The _translations module-level variable holds the parsed data.
+let _translations = null;
+
+async function loadTranslations() {
+  if (_translations) return _translations;
+  try {
+    // Resolve the translations.json URL relative to this module's location.
+    const base = new URL(".", import.meta.url).href;
+    const resp = await fetch(base + "translations.json");
+    _translations = await resp.json();
+  } catch (e) {
+    console.warn("ha-note-record: failed to load translations.json, using built-in English fallback", e);
+    _translations = {
+      en: {
+        title: "Note Record", add_note: "Add Note", edit_note: "Edit Note",
+        create_note: "Create Note", note_title: "Title", content: "Content (Markdown)",
+        save: "Save", cancel: "Cancel", delete: "Delete", create: "Create",
+        updated: "Updated", preview: "Preview", pin_note: "Pin this note",
+        note_title_placeholder: "Note title",
+        note_content_placeholder: "Write your note in Markdown...",
+        add_category: "Add Category", create_category: "Create Category",
+        delete_category: "Delete Category", category_name: "Category Name",
+        category_placeholder: "e.g., Passwords, Notes, Todo",
+        no_categories: "No categories yet. Create one to get started!",
+        no_notes: "No notes in this category yet.", error: "Error",
+        delete_category_confirm: "Delete category",
+        cannot_delete_category: "Cannot delete category. Delete all notes first.",
+        menu: "Menu", search: "Search...", add: "Add", more_actions: "More actions",
+      },
+    };
+  }
+  return _translations;
+}
+
+/**
+ * Resolve the language key for the translations object.
+ * zh-TW / zh-HK map to zh-Hant; other zh-* to zh-Hans; everything else to en.
+ */
+function _resolveLangKey(lang) {
+  if (!lang) return "en";
+  if (lang.startsWith("zh-TW") || lang.startsWith("zh-HK") || lang === "zh-Hant") return "zh-Hant";
+  if (lang.startsWith("zh")) return "zh-Hans";
+  return "en";
+}
+
+/**
+ * Look up a single translation key using the loaded translations data.
+ */
+function _getTranslation(key, lang) {
+  if (!_translations) return key;
+  const langKey = _resolveLangKey(lang);
+  return _translations[langKey]?.[key] || _translations["en"]?.[key] || key;
+}
 
 // Inlined shared styles for HA panel compatibility
 const sharedStylesLit = `
@@ -111,18 +168,6 @@ const sharedStylesLit = `
   }
   .search-row-input::placeholder { color: var(--secondary-text-color); }
 `;
-
-// Translation helper
-const commonTranslations = {
-  en: { menu: 'Menu', search: 'Search...', add: 'Add', more_actions: 'More actions' },
-  'zh-Hant': { menu: '選單', search: '搜尋...', add: '新增', more_actions: '更多操作' },
-  'zh-Hans': { menu: '菜单', search: '搜索...', add: '添加', more_actions: '更多操作' },
-};
-function getCommonTranslation(key, lang = 'en') {
-  const langKey = lang?.startsWith('zh-TW') || lang?.startsWith('zh-HK') ? 'zh-Hant' :
-                  lang?.startsWith('zh') ? 'zh-Hans' : 'en';
-  return commonTranslations[langKey]?.[key] || commonTranslations['en'][key] || key;
-}
 
 class HaNoteRecordPanel extends LitElement {
   static get properties() {
@@ -598,7 +643,10 @@ class HaNoteRecordPanel extends LitElement {
   }
 
   firstUpdated() {
-    this._loadData();
+    // Ensure translations are loaded before rendering content.
+    loadTranslations().then(() => {
+      this._loadData();
+    });
   }
 
   async _loadData() {
@@ -646,7 +694,16 @@ class HaNoteRecordPanel extends LitElement {
       const rawHtml = marked.parse(content);
       return DOMPurify.sanitize(rawHtml);
     } catch (e) {
-      return DOMPurify.sanitize(content);
+      // If markdown parsing fails, escape the content as plain text
+      // instead of passing raw content through DOMPurify (which could
+      // still render unexpected HTML present in the original input).
+      const escaped = content
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+      return escaped;
     }
   }
 
@@ -660,39 +717,12 @@ class HaNoteRecordPanel extends LitElement {
   }
 
   _localize(key) {
-    // Try to get translation from HA
+    // Try to get translation from HA's built-in localization first
     const translation = this.hass?.localize?.(`component.ha_note_record.panel.${key}`);
     if (translation) return translation;
 
-    // Fallback translations
-    const fallbacks = {
-      title: this.hass?.language === "zh-Hant" ? "筆記本" : "Note Record",
-      add_note: this.hass?.language === "zh-Hant" ? "新增筆記" : "Add Note",
-      edit_note: this.hass?.language === "zh-Hant" ? "編輯筆記" : "Edit Note",
-      create_note: this.hass?.language === "zh-Hant" ? "建立筆記" : "Create Note",
-      note_title: this.hass?.language === "zh-Hant" ? "標題" : "Title",
-      content: this.hass?.language === "zh-Hant" ? "內容 (Markdown)" : "Content (Markdown)",
-      save: this.hass?.language === "zh-Hant" ? "儲存" : "Save",
-      cancel: this.hass?.language === "zh-Hant" ? "取消" : "Cancel",
-      delete: this.hass?.language === "zh-Hant" ? "刪除" : "Delete",
-      create: this.hass?.language === "zh-Hant" ? "建立" : "Create",
-      updated: this.hass?.language === "zh-Hant" ? "更新時間" : "Updated",
-      preview: this.hass?.language === "zh-Hant" ? "預覽" : "Preview",
-      pin_note: this.hass?.language === "zh-Hant" ? "置頂此筆記" : "Pin this note",
-      note_title_placeholder: this.hass?.language === "zh-Hant" ? "筆記標題" : "Note title",
-      note_content_placeholder: this.hass?.language === "zh-Hant" ? "使用 Markdown 撰寫筆記..." : "Write your note in Markdown...",
-      add_category: this.hass?.language === "zh-Hant" ? "新增類別" : "Add Category",
-      create_category: this.hass?.language === "zh-Hant" ? "建立類別" : "Create Category",
-      delete_category: this.hass?.language === "zh-Hant" ? "刪除類別" : "Delete Category",
-      category_name: this.hass?.language === "zh-Hant" ? "類別名稱" : "Category Name",
-      category_placeholder: this.hass?.language === "zh-Hant" ? "例如：密碼、筆記、待辦" : "e.g., Passwords, Notes, Todo",
-      no_categories: this.hass?.language === "zh-Hant" ? "尚無類別，請先建立一個！" : "No categories yet. Create one to get started!",
-      no_notes: this.hass?.language === "zh-Hant" ? "此類別尚無筆記。" : "No notes in this category yet.",
-      error: this.hass?.language === "zh-Hant" ? "錯誤" : "Error",
-      delete_category_confirm: this.hass?.language === "zh-Hant" ? "刪除類別" : "Delete category",
-      cannot_delete_category: this.hass?.language === "zh-Hant" ? "無法刪除類別。請先刪除此類別中的所有筆記。" : "Cannot delete category. Delete all notes first.",
-    };
-    return fallbacks[key] || key;
+    // Fall back to locally loaded translations.json
+    return _getTranslation(key, this.hass?.language);
   }
 
   _showNotification(message, type = "info") {
@@ -865,7 +895,7 @@ class HaNoteRecordPanel extends LitElement {
     return html`
       <!-- Top Bar -->
       <div class="top-bar">
-        <button class="top-bar-sidebar-btn" @click=${this._toggleSidebar} title="${getCommonTranslation('menu', this.hass?.language)}">
+        <button class="top-bar-sidebar-btn" @click=${this._toggleSidebar} title="${this._localize('menu')}">
           <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
         </button>
         <h1 class="top-bar-title">${this._localize("title")}</h1>
@@ -886,7 +916,7 @@ class HaNoteRecordPanel extends LitElement {
           <input
             class="search-row-input"
             type="text"
-            placeholder="${getCommonTranslation('search', this.hass?.language)}"
+            placeholder="${this._localize('search')}"
             .value=${this._searchQuery}
             @input=${this._onSearchInput}
           />

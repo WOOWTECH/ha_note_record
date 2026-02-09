@@ -18,7 +18,7 @@ PANEL_COMPONENT_NAME = "ha-note-record-panel"
 PANEL_TITLE = "Note Record"
 PANEL_TITLE_ZH = "記事本"
 PANEL_ICON = "mdi:note-text"
-PANEL_VERSION = "1.3.0"
+PANEL_VERSION = "1.4.0"
 
 
 def _get_panel_title(hass: HomeAssistant) -> str:
