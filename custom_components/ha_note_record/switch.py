@@ -42,6 +42,10 @@ async def async_setup_entry(
         """Add entities for newly created notes."""
         new_entities: list[HaNoteRecordSwitchEntity] = []
 
+        # Reconcile known_note_ids — remove deleted notes
+        current_ids = {n.id for n in store.notes}
+        known_note_ids.intersection_update(current_ids)
+
         for note in store.notes:
             if note.id not in known_note_ids:
                 category = store.get_category(note.category_id)
@@ -92,11 +96,11 @@ class HaNoteRecordSwitchEntity(HaNoteRecordEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Pin the note."""
         await self._store.async_update_note_pinned(self._note.id, True)
-        self._refresh_note()
-        self.async_write_ha_state()
+        if self._refresh_note():
+            self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Unpin the note."""
         await self._store.async_update_note_pinned(self._note.id, False)
-        self._refresh_note()
-        self.async_write_ha_state()
+        if self._refresh_note():
+            self.async_write_ha_state()

@@ -18,6 +18,7 @@ from .const import (
     ATTR_UPDATED_AT,
     DOMAIN,
     ICON_NOTE,
+    MAX_NOTE_CONTENT_LENGTH,
 )
 from .entity import HaNoteRecordEntity
 from .store import Category, HaNoteRecordStore, Note
@@ -52,6 +53,10 @@ async def async_setup_entry(
     def async_add_new_entities() -> None:
         """Add entities for newly created notes."""
         new_entities: list[HaNoteRecordTextEntity] = []
+
+        # Reconcile known_note_ids — remove deleted notes
+        current_ids = {n.id for n in store.notes}
+        known_note_ids.intersection_update(current_ids)
 
         for note in store.notes:
             if note.id not in known_note_ids:
@@ -109,6 +114,12 @@ class HaNoteRecordTextEntity(HaNoteRecordEntity, TextEntity):
 
     async def async_set_value(self, value: str) -> None:
         """Set the note content."""
+        if len(value) > MAX_NOTE_CONTENT_LENGTH:
+            _LOGGER.warning(
+                "Content exceeds maximum length of %d characters",
+                MAX_NOTE_CONTENT_LENGTH,
+            )
+            return
         await self._store.async_update_note_content(self._note.id, value)
-        self._refresh_note()
-        self.async_write_ha_state()
+        if self._refresh_note():
+            self.async_write_ha_state()
