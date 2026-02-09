@@ -17,15 +17,12 @@ _LOGGER = logging.getLogger(__name__)
 type HaNoteRecordConfigEntry = ConfigEntry[HaNoteRecordStore]
 
 DATA_PANEL_REGISTERED = f"{DOMAIN}_panel_registered"
+DATA_WS_REGISTERED = f"{DOMAIN}_ws_registered"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Ha Note Record component."""
     hass.data.setdefault(DOMAIN, {})
-
-    # Register WebSocket API
-    async_register_websocket_api(hass)
-
     return True
 
 
@@ -37,10 +34,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: HaNoteRecordConfigEntry)
     entry.runtime_data = store
     hass.data[DOMAIN]["store"] = store
 
-    # Register panel (only once)
+    # Register WebSocket API (once, idempotent)
+    if not hass.data.get(DATA_WS_REGISTERED):
+        async_register_websocket_api(hass)
+        hass.data[DATA_WS_REGISTERED] = True
+
+    # Register panel (only once) — set flag before await to prevent race
     if not hass.data.get(DATA_PANEL_REGISTERED):
-        await async_register_panel(hass)
         hass.data[DATA_PANEL_REGISTERED] = True
+        await async_register_panel(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

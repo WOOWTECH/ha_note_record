@@ -202,7 +202,8 @@ async def websocket_update_note(
         connection.send_error(msg["id"], "not_found", "Note not found")
         return
 
-    # Update title if provided
+    # Validate title if provided
+    title = None
     if "title" in msg:
         title = msg["title"].strip()
         if not title:
@@ -223,10 +224,8 @@ async def websocket_update_note(
                 connection.send_error(msg["id"], "duplicate", "Note title already exists in this category")
                 return
 
-        note.title = title
-        await store.async_save()
-
-    # Update content if provided
+    # Validate content if provided
+    content = None
     if "content" in msg:
         content = msg["content"]
         if len(content) > MAX_NOTE_CONTENT_LENGTH:
@@ -236,11 +235,14 @@ async def websocket_update_note(
                 f"Note content exceeds maximum length of {MAX_NOTE_CONTENT_LENGTH} characters",
             )
             return
-        await store.async_update_note_content(note_id, content)
 
-    # Update pinned if provided
-    if "pinned" in msg:
-        await store.async_update_note_pinned(note_id, msg["pinned"])
+    # Get pinned if provided
+    pinned = msg.get("pinned")
+
+    # Apply all updates atomically (single save)
+    await store.async_update_note(
+        note_id, title=title, content=content, pinned=pinned
+    )
 
     # Refresh note data
     updated_note = store.get_note(note_id)
