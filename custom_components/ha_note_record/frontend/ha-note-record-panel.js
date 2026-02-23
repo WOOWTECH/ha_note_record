@@ -310,6 +310,7 @@ class HaNoteRecordPanel extends LitElement {
         transition: all 0.2s ease;
         position: relative;
         border-left: 4px solid transparent;
+        overflow: hidden;
       }
 
       .note-card:hover {
@@ -334,6 +335,9 @@ class HaNoteRecordPanel extends LitElement {
         color: var(--primary-text-color);
         flex: 1;
         margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .pin-icon {
