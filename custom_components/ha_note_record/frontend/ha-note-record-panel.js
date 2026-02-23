@@ -37,7 +37,9 @@ async function loadTranslations() {
         no_categories: "No categories yet. Create one to get started!",
         no_notes: "No notes in this category yet.", error: "Error",
         delete_category_confirm: "Delete category",
-        cannot_delete_category: "Cannot delete category. Delete all notes first.",
+        delete_category_warning: 'This will permanently delete the category "{name}" and all {count} note(s) in it. This action cannot be undone.',
+        delete_category_empty_warning: 'This will permanently delete the empty category "{name}". This action cannot be undone.',
+        delete_category_confirm_label: 'Type "{name}" to confirm',
         menu: "Menu", search: "Search...", add: "Add", more_actions: "More actions",
         add_note_to_category: "Add Note to this Category",
       },
@@ -193,6 +195,9 @@ class HaNoteRecordPanel extends LitElement {
       _categoryDialogMode: { type: String },
       _editingCategory: { type: Object },
       _searchQuery: { type: String },
+      _deleteCategoryDialogOpen: { type: Boolean },
+      _deleteCategoryTarget: { type: Object },
+      _deleteCategoryInput: { type: String },
     };
   }
 
@@ -613,6 +618,18 @@ class HaNoteRecordPanel extends LitElement {
         opacity: 0.9;
       }
 
+      .btn-danger:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .delete-warning-text {
+        color: var(--error-color, #db4437);
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 16px;
+      }
+
       @media (max-width: 600px) {
         :host {
           padding: 8px;
@@ -643,6 +660,9 @@ class HaNoteRecordPanel extends LitElement {
     this._categoryDialogMode = "create";
     this._editingCategory = null;
     this._searchQuery = "";
+    this._deleteCategoryDialogOpen = false;
+    this._deleteCategoryTarget = null;
+    this._deleteCategoryInput = "";
   }
 
   _toggleSidebar() {
@@ -795,24 +815,37 @@ class HaNoteRecordPanel extends LitElement {
   async _deleteCategory(categoryId) {
     const category = this._categories.find((c) => c.id === categoryId);
     if (!category) return;
+    this._deleteCategoryTarget = {
+      id: categoryId,
+      name: category.name,
+      noteCount: this._notes.filter((n) => n.category_id === categoryId).length,
+    };
+    this._deleteCategoryInput = "";
+    this._deleteCategoryDialogOpen = true;
+  }
 
-    const notesInCategory = this._notes.filter((n) => n.category_id === categoryId);
-    if (notesInCategory.length > 0) {
-      this._showError(`Cannot delete category "${category.name}". Delete all ${notesInCategory.length} notes first.`);
-      return;
-    }
+  _closeDeleteCategoryDialog() {
+    this._deleteCategoryDialogOpen = false;
+    this._deleteCategoryTarget = null;
+    this._deleteCategoryInput = "";
+  }
 
-    if (!confirm(`Delete category "${category.name}"?`)) return;
+  async _confirmDeleteCategory() {
+    const target = this._deleteCategoryTarget;
+    if (!target) return;
+    if (this._deleteCategoryInput !== target.name) return;
 
     try {
       await this.hass.callWS({
         type: "ha_note_record/delete_category",
-        category_id: categoryId,
+        category_id: target.id,
       });
-      this._categories = this._categories.filter((c) => c.id !== categoryId);
-      if (this._activeTab === categoryId) {
+      this._notes = this._notes.filter((n) => n.category_id !== target.id);
+      this._categories = this._categories.filter((c) => c.id !== target.id);
+      if (this._activeTab === target.id) {
         this._activeTab = this._categories.length > 0 ? this._categories[0].id : null;
       }
+      this._closeDeleteCategoryDialog();
     } catch (error) {
       console.error("Failed to delete category:", error);
       this._showError(error.message || "Failed to delete category");
@@ -1025,6 +1058,7 @@ class HaNoteRecordPanel extends LitElement {
 
       ${this._dialogOpen ? this._renderNoteDialog() : ""}
       ${this._categoryDialogOpen ? this._renderCategoryDialog() : ""}
+      ${this._deleteCategoryDialogOpen ? this._renderDeleteCategoryDialog() : ""}
     `;
   }
 
@@ -1156,6 +1190,86 @@ class HaNoteRecordPanel extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  _renderDeleteCategoryDialog() {
+    const target = this._deleteCategoryTarget;
+    if (!target) return html``;
+
+    const warningKey = target.noteCount > 0
+      ? "delete_category_warning"
+      : "delete_category_empty_warning";
+    const warningTemplate = this._localize(warningKey);
+    const warningText = warningTemplate
+      .replace("{name}", target.name)
+      .replace("{count}", String(target.noteCount));
+    const confirmLabel = this._localize("delete_category_confirm_label")
+      .replace("{name}", target.name);
+    const canConfirm = this._deleteCategoryInput === target.name;
+
+    return html`
+      <div class="dialog-overlay" @click=${this._closeDeleteCategoryDialog}>
+        <div class="dialog" @click=${(e) => e.stopPropagation()} style="max-width:480px">
+          <div class="dialog-header">
+            <h2>${this._localize("delete_category")}</h2>
+            <button class="dialog-close" @click=${this._closeDeleteCategoryDialog}>
+              &times;
+            </button>
+          </div>
+          <div class="dialog-content">
+            <p class="delete-warning-text"></p>
+            <div class="form-group">
+              <label>${confirmLabel}</label>
+              <input
+                type="text"
+                .value=${this._deleteCategoryInput}
+                @input=${(e) => { this._deleteCategoryInput = e.target.value; }}
+                autocomplete="off"
+              />
+            </div>
+          </div>
+          <div class="dialog-footer">
+            <div class="dialog-footer-left"></div>
+            <div class="dialog-footer-right">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click=${this._closeDeleteCategoryDialog}
+              >
+                ${this._localize("cancel")}
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                ?disabled=${!canConfirm}
+                @click=${this._confirmDeleteCategory}
+              >
+                ${this._localize("delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  updated(changedProperties) {
+    super.updated(changedProperties);
+    // Safely set warning text via textContent to avoid XSS from category names
+    if (this._deleteCategoryDialogOpen && this._deleteCategoryTarget) {
+      const warningEl = this.shadowRoot?.querySelector(".delete-warning-text");
+      if (warningEl) {
+        const target = this._deleteCategoryTarget;
+        const warningKey = target.noteCount > 0
+          ? "delete_category_warning"
+          : "delete_category_empty_warning";
+        const warningTemplate = this._localize(warningKey);
+        const warningText = warningTemplate
+          .replace("{name}", target.name)
+          .replace("{count}", String(target.noteCount));
+        warningEl.textContent = warningText;
+      }
+    }
   }
 }
 

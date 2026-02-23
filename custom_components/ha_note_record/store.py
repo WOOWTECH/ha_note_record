@@ -176,13 +176,19 @@ class HaNoteRecordStore:
         return category
 
     async def async_delete_category(self, category_id: str) -> bool:
-        """Delete a category. Returns False if category has notes."""
+        """Delete a category.
+
+        The caller (websocket handler) is responsible for cascade-deleting
+        notes before calling this method.
+        """
         notes = self.get_notes_by_category(category_id)
         if notes:
             _LOGGER.warning(
-                "Cannot delete category %s: has %d notes", category_id, len(notes)
+                "Category %s still has %d notes at deletion time; "
+                "caller should have cascade-deleted them first",
+                category_id,
+                len(notes),
             )
-            return False
 
         self._data.categories = [
             c for c in self._data.categories if c.id != category_id

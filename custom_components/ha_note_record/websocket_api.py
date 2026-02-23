@@ -318,15 +318,17 @@ async def websocket_delete_category(
         connection.send_error(msg["id"], "not_found", "Category not found")
         return
 
-    # Check if category has notes
+    # Cascade-delete all notes in this category first
     notes = store.get_notes_by_category(category_id)
-    if notes:
-        connection.send_error(
-            msg["id"],
-            "not_empty",
-            f"Category has {len(notes)} notes. Delete all notes first.",
-        )
-        return
+    ent_reg = er.async_get(hass)
+    for note in notes:
+        await store.async_delete_note(note.id)
+        # Clean up entity registry entries for each deleted note
+        for platform, suffix in [("text", "_content"), ("switch", "_pinned")]:
+            unique_id = f"{DOMAIN}_{category_id}_{note.id}{suffix}"
+            entity_id = ent_reg.async_get_entity_id(platform, DOMAIN, unique_id)
+            if entity_id:
+                ent_reg.async_remove(entity_id)
 
     success = await store.async_delete_category(category_id)
     if success:
