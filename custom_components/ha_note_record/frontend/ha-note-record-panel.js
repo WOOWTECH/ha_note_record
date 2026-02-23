@@ -663,6 +663,16 @@ class HaNoteRecordPanel extends LitElement {
     this._deleteCategoryDialogOpen = false;
     this._deleteCategoryTarget = null;
     this._deleteCategoryInput = "";
+    this._prevLanguage = null;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    if (this.hass) {
+      const lang = this.hass.language || "en";
+      this._prevLanguage = lang;
+      HaNoteRecordPanel._startSidebarPatcher(lang);
+    }
   }
 
   _toggleSidebar() {
@@ -1255,6 +1265,13 @@ class HaNoteRecordPanel extends LitElement {
 
   updated(changedProperties) {
     super.updated(changedProperties);
+    if (changedProperties.has("hass") && this.hass) {
+      const newLang = this.hass.language || "en";
+      if (this._prevLanguage !== newLang) {
+        this._prevLanguage = newLang;
+        HaNoteRecordPanel._startSidebarPatcher(newLang);
+      }
+    }
     // Safely set warning text via textContent to avoid XSS from category names
     if (this._deleteCategoryDialogOpen && this._deleteCategoryTarget) {
       const warningEl = this.shadowRoot?.querySelector(".delete-warning-text");
@@ -1270,6 +1287,62 @@ class HaNoteRecordPanel extends LitElement {
         warningEl.textContent = warningText;
       }
     }
+  }
+
+  static _patchSidebarTitle(lang) {
+    const title = lang && (lang.startsWith("zh-TW") || lang.startsWith("zh-HK") || lang === "zh-Hant")
+      ? "\u8A18\u4E8B\u672C"
+      : lang && lang.startsWith("zh")
+        ? "\u8BB0\u4E8B\u672C"
+        : "Note Record";
+    window.__haNoteRecordLang = lang;
+    try {
+      const ha = document.querySelector("home-assistant");
+      if (!ha || !ha.shadowRoot) return;
+      const main = ha.shadowRoot.querySelector("home-assistant-main");
+      if (!main || !main.shadowRoot) return;
+      const sidebar = main.shadowRoot.querySelector("ha-sidebar");
+      if (!sidebar || !sidebar.shadowRoot) return;
+      const items = sidebar.shadowRoot.querySelectorAll("ha-md-list-item");
+      for (const item of items) {
+        const anchor = item.shadowRoot && item.shadowRoot.querySelector('a[href="/ha-note-record"]');
+        if (anchor) {
+          const span = item.querySelector(".item-text");
+          if (span) {
+            for (let i = 0; i < span.childNodes.length; i++) {
+              if (span.childNodes[i].nodeType === 3) {
+                if (span.childNodes[i].data !== title) {
+                  span.childNodes[i].data = title;
+                }
+                break;
+              }
+            }
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      // Silently fail if sidebar not rendered yet
+    }
+  }
+
+  static _startSidebarPatcher(lang) {
+    if (window.__haNoteRecordSidebarInterval) {
+      HaNoteRecordPanel._patchSidebarTitle(lang);
+      return;
+    }
+    window.__haNoteRecordLang = lang;
+    window.__haNoteRecordSidebarInterval = setInterval(() => {
+      try {
+        const haEl = document.querySelector("home-assistant");
+        if (haEl && haEl.hass && haEl.hass.language) {
+          window.__haNoteRecordLang = haEl.hass.language;
+        }
+      } catch (e) { /* ignore */ }
+      const currentLang = window.__haNoteRecordLang || "en";
+      HaNoteRecordPanel._patchSidebarTitle(currentLang);
+    }, 2000);
+    setTimeout(() => HaNoteRecordPanel._patchSidebarTitle(lang), 200);
   }
 }
 
