@@ -19,7 +19,7 @@ async function loadTranslations() {
   try {
     // Resolve the translations.json URL relative to this module's location.
     const base = new URL(".", import.meta.url).href;
-    const resp = await fetch(base + "translations.json");
+    const resp = await fetch(base + "translations.json?v=" + Date.now());
     _translations = await resp.json();
   } catch (e) {
     console.warn("ha-note-record: failed to load translations.json, using built-in English fallback", e);
@@ -39,6 +39,7 @@ async function loadTranslations() {
         delete_category_confirm: "Delete category",
         cannot_delete_category: "Cannot delete category. Delete all notes first.",
         menu: "Menu", search: "Search...", add: "Add", more_actions: "More actions",
+        add_note_to_category: "Add Note to this Category",
       },
     };
   }
@@ -107,22 +108,28 @@ const sharedStylesLit = `
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .top-bar-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .top-bar-action-btn {
-    width: 40px;
-    height: 40px;
-    border: none;
-    background: transparent;
-    color: var(--app-header-text-color, var(--primary-text-color));
-    cursor: pointer;
+  .add-note-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    transition: background 0.2s;
+    gap: 8px;
+    width: 100%;
+    padding: 24px;
+    margin-top: 16px;
+    border: 2px dashed var(--divider-color);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
   }
-  .top-bar-action-btn:hover { background: var(--secondary-background-color); }
-  .top-bar-action-btn svg { width: 24px; height: 24px; }
+  .add-note-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: var(--secondary-background-color);
+  }
+  .add-note-btn svg { width: 20px; height: 20px; }
 
   /* SEARCH ROW */
   .search-row {
@@ -903,14 +910,6 @@ class HaNoteRecordPanel extends LitElement {
           <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
         </button>
         <h1 class="top-bar-title">${this._localize("title")}</h1>
-        <div class="top-bar-actions">
-          <button class="top-bar-action-btn" @click=${() => this._openNoteDialog("create")} title="${this._localize("add_note")}">
-            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14 10H19V12H14V10M14 6H19V8H14V6M9 12H11V14H13V16H11V18H9V16H7V14H9V12M5 2H19C20.11 2 21 2.9 21 4V20C21 21.11 20.11 22 19 22H5C3.9 22 3 21.11 3 20V4C3 2.9 3.9 2 5 2M5 4V20H19V4H5Z"/></svg>
-          </button>
-          <button class="top-bar-action-btn" @click=${() => this._openCategoryDialog("create")} title="${this._localize("add_category")}">
-            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 12H14V10H16V12H18V14H16V16H14V14H12V12M22 8V18C22 19.11 21.11 20 20 20H4C2.9 20 2 19.11 2 18V6C2 4.89 2.9 4 4 4H10L12 6H20C21.11 6 22 6.9 22 8M20 8H4V18H20V8Z"/></svg>
-          </button>
-        </div>
       </div>
 
       <!-- Search Row -->
@@ -983,6 +982,9 @@ class HaNoteRecordPanel extends LitElement {
                     <div class="empty-state">
                       <ha-icon icon="mdi:note-plus-outline"></ha-icon>
                       <p>${this._localize("no_notes")}</p>
+                      <button class="btn btn-primary" @click=${() => this._openNoteDialog("create")}>
+                        ${this._localize("add_note_to_category")}
+                      </button>
                     </div>
                   `
                 : html`
@@ -1012,6 +1014,10 @@ class HaNoteRecordPanel extends LitElement {
                         `
                       )}
                     </div>
+                    <button class="add-note-btn" @click=${() => this._openNoteDialog("create")}>
+                      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                      ${this._localize("add_note_to_category")}
+                    </button>
                   `}
             `
           : ""}

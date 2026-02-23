@@ -21,3 +21,4 @@ Thumbs.db
 *.log
 
 .claude/
+user_prompt.md

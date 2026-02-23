@@ -28,7 +28,8 @@
     "menu": "Menu",
     "search": "Search...",
     "add": "Add",
-    "more_actions": "More actions"
+    "more_actions": "More actions",
+    "add_note_to_category": "Add Note to this Category"
   },
   "zh-Hant": {
     "title": "筆記本",
@@ -59,7 +60,8 @@
     "menu": "選單",
     "search": "搜尋...",
     "add": "新增",
-    "more_actions": "更多操作"
+    "more_actions": "更多操作",
+    "add_note_to_category": "在此類別新增筆記"
   },
   "zh-Hans": {
     "title": "笔记本",
@@ -90,6 +92,7 @@
     "menu": "菜单",
     "search": "搜索...",
     "add": "添加",
-    "more_actions": "更多操作"
+    "more_actions": "更多操作",
+    "add_note_to_category": "在此分类添加笔记"
   }
 }
