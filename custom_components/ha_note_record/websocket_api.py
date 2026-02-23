@@ -9,6 +9,7 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import (
     DOMAIN,
@@ -272,12 +273,22 @@ async def websocket_delete_note(
 
     note_id = msg["note_id"]
 
-    if store.get_note(note_id) is None:
+    note = store.get_note(note_id)
+    if note is None:
         connection.send_error(msg["id"], "not_found", "Note not found")
         return
 
+    category_id = note.category_id
+
     success = await store.async_delete_note(note_id)
     if success:
+        # Clean up entity registry entries
+        ent_reg = er.async_get(hass)
+        for platform, suffix in [("text", "_content"), ("switch", "_pinned")]:
+            unique_id = f"{DOMAIN}_{category_id}_{note_id}{suffix}"
+            entity_id = ent_reg.async_get_entity_id(platform, DOMAIN, unique_id)
+            if entity_id:
+                ent_reg.async_remove(entity_id)
         connection.send_result(msg["id"], {"deleted": True})
     else:
         connection.send_error(msg["id"], "error", "Failed to delete note")
@@ -319,6 +330,11 @@ async def websocket_delete_category(
 
     success = await store.async_delete_category(category_id)
     if success:
+        # Clean up device registry entry
+        dev_reg = dr.async_get(hass)
+        device = dev_reg.async_get_device(identifiers={(DOMAIN, category_id)})
+        if device:
+            dev_reg.async_remove_device(device.id)
         connection.send_result(msg["id"], {"deleted": True})
     else:
         connection.send_error(msg["id"], "error", "Failed to delete category")
