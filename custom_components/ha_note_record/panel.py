@@ -16,17 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 PANEL_URL_PATH = "ha-note-record"
 PANEL_COMPONENT_NAME = "ha-note-record-panel"
 PANEL_TITLE = "Note Record"
-PANEL_TITLE_ZH = "記事本"
 PANEL_ICON = "mdi:note-text"
 PANEL_VERSION = "1.4.0"
-
-
-def _get_panel_title(hass: HomeAssistant) -> str:
-    """Get panel title based on HA language setting."""
-    language = hass.config.language or "en"
-    if language in ("zh-Hant", "zh-TW"):
-        return PANEL_TITLE_ZH
-    return PANEL_TITLE
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
@@ -47,7 +38,7 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         hass,
         webcomponent_name=PANEL_COMPONENT_NAME,
         frontend_url_path=PANEL_URL_PATH,
-        sidebar_title=_get_panel_title(hass),
+        sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
         module_url=f"/{DOMAIN}/frontend/ha-note-record-panel.js?v={PANEL_VERSION}",
         require_admin=False,
