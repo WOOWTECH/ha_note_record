@@ -17,7 +17,7 @@ PANEL_URL_PATH = "ha-note-record"
 PANEL_COMPONENT_NAME = "ha-note-record-panel"
 PANEL_TITLE = "Note Record"
 PANEL_ICON = "mdi:note-text"
-PANEL_VERSION = "1.4.0"
+PANEL_VERSION = "1.0.0"
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
