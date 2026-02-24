@@ -12,6 +12,14 @@ A Home Assistant custom integration for managing categorized notes with Markdown
 - **Custom Sidebar Panel** - Dedicated panel with dark/light mode support
 - **WebSocket API** - Real-time CRUD operations for the frontend panel
 
+## Screenshots
+
+### Panel Overview
+![Panel Overview](screenshots/panel-overview.png)
+
+### Note Editing with Markdown Preview
+![Edit Dialog](screenshots/edit-dialog.png)
+
 ## Installation
 
 ### HACS (Manual Repository)

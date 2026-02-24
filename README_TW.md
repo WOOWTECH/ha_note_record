@@ -12,6 +12,14 @@
 - **自訂側邊欄面板** - 專屬面板，支援深色/淺色模式
 - **WebSocket API** - 為前端面板提供即時 CRUD 操作
 
+## 畫面截圖
+
+### 面板總覽
+![面板總覽](screenshots/panel-overview.png)
+
+### 筆記編輯與 Markdown 預覽
+![編輯對話框](screenshots/edit-dialog.png)
+
 ## 安裝方式
 
 ### HACS（手動新增儲存庫）
